@@ -3,34 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منظومة حسابات يزن الاحترافية</title>
+    <title>منظومة يزن المتكاملة</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --primary: #007bff; --success: #28a745; --danger: #dc3545; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; margin: 0; padding: 10px; }
         .container { max-width: 800px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
-        
         .header { background: #fff; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
-        .nav-tabs { display: flex; background: #eee; padding: 5px; gap: 5px; overflow-x: auto; }
-        .tab { padding: 8px 15px; background: #ddd; border-radius: 5px; cursor: pointer; white-space: nowrap; font-size: 14px; }
+        .nav-tabs { display: flex; background: #eee; padding: 5px; gap: 5px; overflow-x: auto; align-items: center; }
+        .tab { padding: 8px 15px; background: #ddd; border-radius: 5px; cursor: pointer; white-space: nowrap; font-size: 14px; display: flex; align-items: center; gap: 8px; }
         .tab.active { background: var(--primary); color: white; }
-
+        .delete-tab { color: #ff9999; font-weight: bold; cursor: pointer; padding: 0 5px; }
         .input-box { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #fafafa; }
         .full-width { grid-column: span 2; }
         input, select, button { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
-        
         button.add-btn { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
-        button.export-btn { background: var(--success); color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; }
-
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #f8f9fa; padding: 12px; font-size: 13px; border-bottom: 2px solid #eee; }
         td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; font-size: 13px; }
-        
+        .del-row { color: var(--danger); cursor: pointer; font-weight: bold; font-size: 18px; }
         .up { color: var(--success); font-weight: bold; }
         .down { color: var(--danger); font-weight: bold; }
         .summary { padding: 15px; background: #fff; text-align: center; font-size: 18px; font-weight: bold; border-top: 2px solid #eee; }
-        
-        .account-manager { padding: 10px; background: #f0f0f0; border-bottom: 1px solid #ddd; display: flex; gap: 10px; }
+        .account-manager { padding: 10px; background: #f0f0f0; display: flex; gap: 10px; }
     </style>
 </head>
 <body>
@@ -38,24 +33,21 @@
 <div class="container">
     <div class="header">
         <strong>دفتر حساباتي</strong>
-        <button class="export-btn" onclick="exportToExcel()">تصدير Excel 📊</button>
+        <button onclick="exportToExcel()" style="background:var(--success); color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer;">تصدير Excel 📊</button>
     </div>
 
-    <!-- إدارة الحسابات -->
     <div class="account-manager">
-        <input type="text" id="newAccountName" placeholder="اسم حساب جديد (شخص أو سيارة)" style="flex: 1;">
-        <select id="newAccountCurrency" style="width: 100px;">
+        <input type="text" id="newAccountName" placeholder="اسم حساب جديد" style="flex: 1;">
+        <select id="newAccountCurrency">
             <option value="يمني">يمني</option>
             <option value="دولار">دولار</option>
             <option value="سعودي">سعودي</option>
         </select>
-        <button onclick="createNewAccount()" style="padding: 5px 15px;">+</button>
+        <button onclick="createNewAccount()">+</button>
     </div>
 
-    <!-- تبويبات الحسابات -->
     <div class="nav-tabs" id="tabsList"></div>
 
-    <!-- إدخال البيانات -->
     <div class="input-box">
         <input type="number" id="amount" placeholder="المبلغ">
         <select id="type">
@@ -66,7 +58,6 @@
         <button class="add-btn full-width" onclick="addEntry()">إضافة العملية</button>
     </div>
 
-    <!-- الجدول -->
     <table>
         <thead>
             <tr>
@@ -74,29 +65,39 @@
                 <th>المبلغ</th>
                 <th>التفاصيل</th>
                 <th>الرصيد</th>
+                <th>حذف</th>
             </tr>
         </thead>
         <tbody id="dataBody"></tbody>
     </table>
 
-    <div class="summary" id="totalDisplay">الرصيد الكلي: 0</div>
+    <div class="summary" id="totalDisplay">الرصيد: 0</div>
 </div>
 
 <script>
-    let data = JSON.parse(localStorage.getItem('yazan_accounts')) || {
+    let data = JSON.parse(localStorage.getItem('yazan_v3')) || {
         currentAccount: 'عام',
         accounts: { 'عام': { currency: 'يمني', entries: [] } }
     };
 
-    function save() { localStorage.setItem('yazan_accounts', JSON.stringify(data)); render(); }
+    function save() { localStorage.setItem('yazan_v3', JSON.stringify(data)); render(); }
 
     function createNewAccount() {
         const name = document.getElementById('newAccountName').value;
         const cur = document.getElementById('newAccountCurrency').value;
-        if(name) {
+        if(name && !data.accounts[name]) {
             data.accounts[name] = { currency: cur, entries: [] };
             data.currentAccount = name;
             document.getElementById('newAccountName').value = '';
+            save();
+        }
+    }
+
+    function deleteAccount(accName) {
+        if(accName === 'عام') return alert("لا يمكن حذف الحساب الرئيسي");
+        if(confirm(`هل أنت متأكد من حذف حساب "${accName}" بالكامل؟`)) {
+            delete data.accounts[accName];
+            data.currentAccount = 'عام';
             save();
         }
     }
@@ -108,6 +109,7 @@
         if(amt && desc) {
             const now = new Date();
             data.accounts[data.currentAccount].entries.push({
+                id: Date.now(),
                 amount: parseFloat(amt) * parseInt(type),
                 desc: desc,
                 date: now.toLocaleDateString('en-GB') + ' ' + now.getHours() + ':' + now.getMinutes(),
@@ -119,15 +121,21 @@
         }
     }
 
+    function deleteEntry(id) {
+        if(confirm("حذف هذه العملية؟")) {
+            data.accounts[data.currentAccount].entries = data.accounts[data.currentAccount].entries.filter(e => e.id !== id);
+            save();
+        }
+    }
+
     function render() {
         const tabs = document.getElementById('tabsList');
         tabs.innerHTML = '';
         for(let acc in data.accounts) {
-            const btn = document.createElement('div');
-            btn.className = `tab ${data.currentAccount === acc ? 'active' : ''}`;
-            btn.innerText = `${acc} (${data.accounts[acc].currency})`;
-            btn.onclick = () => { data.currentAccount = acc; save(); };
-            tabs.appendChild(btn);
+            const tabDiv = document.createElement('div');
+            tabDiv.className = `tab ${data.currentAccount === acc ? 'active' : ''}`;
+            tabDiv.innerHTML = `<span onclick="selectAcc('${acc}')">${acc}</span> ${acc !== 'عام' ? `<span class="delete-tab" onclick="deleteAccount('${acc}')">×</span>` : ''}`;
+            tabs.appendChild(tabDiv);
         }
 
         const body = document.getElementById('dataBody');
@@ -142,11 +150,14 @@
                 <td class="${e.amount > 0 ? 'up' : 'down'}">${Math.abs(e.amount).toLocaleString()}</td>
                 <td>${e.desc}</td>
                 <td>${balance.toLocaleString()}</td>
+                <td class="del-row" onclick="deleteEntry(${e.id})">🗑</td>
             </tr>`;
             body.insertAdjacentHTML('afterbegin', row);
         });
         document.getElementById('totalDisplay').innerText = `الرصيد: ${balance.toLocaleString()} ${acc.currency}`;
     }
+
+    function selectAcc(name) { data.currentAccount = name; save(); }
 
     function exportToExcel() {
         const acc = data.accounts[data.currentAccount];
